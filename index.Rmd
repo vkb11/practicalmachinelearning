@@ -1,0 +1,86 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Vijay Kumar"
+date: "March 10, 2016"
+output: html_document
+---
+
+
+Packages Required
+```{r}
+library(dplyr)
+library(randomForest)
+library(caret)
+
+```
+
+Loading the training and test data
+```{r}
+setwd("C:/Users/vkumar16/Desktop/R Data_Assg/Project_ML/practicalmachinelearning")
+training<- read.csv("pml-training.csv", header = TRUE)
+testing<- read.csv("pml-testing.csv", header = TRUE)
+```
+
+Summarizing the data
+```{r}
+summary(training)
+```
+
+Identifying & Converting training and test data into “NA”, “” and “#DIV/0!” as NA strings
+```{r}
+training<- read.csv("pml-training.csv", header = TRUE, na.strings= c("NA", "", "#DIV/0!"))
+testing<- read.csv("pml-testing.csv", header = TRUE, na.strings= c("NA", "", "#DIV/0!"))
+
+```
+
+Splitting into training data into training and test
+```{r}
+intrain<- createDataPartition(y= training$classe, p=0.7, list= FALSE)
+traindata <- training[intrain,]
+testdata <- training[-intrain,]
+```
+
+Remove X, username and cvdt_timestamp as predictors from the training subset
+```{r}
+traindata<- traindata[,-grep("X|user_name|cvtd_timestamp", names(traindata))]
+```
+
+Remove Near Zero predictors
+```{r}
+traindata<- traindata[, -nearZeroVar(traindata)]
+```
+
+NA Treatment
+```{r}
+NAPercent<- colSums(is.na(traindata))/nrow(traindata)
+NAMajority <- names(NAPercent[NAPercent > 0.70])
+NAtoRemove<- which(NAPercent > 0.70)
+traindata <- traindata[,-NAtoRemove]
+```
+
+List of predictor variables
+```{r}
+Var<- names(traindata)
+ModelVar<- Var[-grep("classe", Var)]
+ModelVar
+```
+
+Random Forest Model based on ModelVar predicting classe
+```{r}
+set.seed(83)
+datatomodel<- traindata[, Var]
+modelfit <- randomForest(classe ~., data=datatomodel, type="class")
+
+```
+
+Insample Error & Confusion Matrix
+```{r}
+predtrain <- predict(modelfit,newdata=traindata)
+confusionMatrix(predtrain,traindata$classe)$table
+```
+
+Outofsample Error & Confusion Matrix
+```{r}
+predtest <- predict(modelfit,newdata=testdata)
+confusionMatrix(predtest,testdata$classe)
+```
